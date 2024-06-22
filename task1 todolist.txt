@@ -1,0 +1,145 @@
+import tkinter as tk
+from tkinter import ttk
+from tkinter import messagebox
+import sqlite3 as sql
+
+class ToDoListApp():
+    def __init__(self,root):
+        self.root=root
+        self.root.title("TO-DO LIST")
+        self.root.geometry("550x500+750+250")
+        self.root.resizable(0,0)
+        self.root.configure(bg='#AFE1AF')
+
+        self.tasks=[]
+
+        self.connection=sql.connect('listoftasks.db')
+        self.cursor=self.connection.cursor()
+        self.cursor.execute('CREATE TABLE IF NOT EXISTS tasks(title TEXT)')
+
+        self.create_widgets()
+        self.retrive_database()
+        self.list_update()
+
+    def create_widgets(self):
+        self.header_Frame=tk.Frame(self.root,bg='#AFE1AF')
+        self.functions_Frame=tk.Frame(self.root, bg='#AFE1AF')  
+        self.listbox_Frame=tk.Frame(self.root, bg='#AFE1AF') 
+
+        self.header_Frame.pack(fill='both')
+        self.functions_Frame.pack(side='right',expand=True,fill='both')
+        self.listbox_Frame.pack(side='left',expand=True,fill='both')
+
+        self.header_label=ttk.Label(self.header_Frame,
+                                    text='To-Do List',
+                                    font=('Lucida Handwriting',30),
+                                    background='#AFE1AF',
+                                    foreground='#8B4513')
+        self.header_label.pack(padx=30,pady=30)
+
+        self.task_label=ttk.Label(self.functions_Frame,
+                                    text='Enter the task:',
+                                    font=('Times New Roman',15),
+                                    background='#AFE1AF',
+                                    foreground='#000000')
+        self.task_label.place(x=30,y=40)
+
+        self.task_field=ttk.Entry(self.functions_Frame,
+                                    font=('Times New Roman',14),
+                                    width=18,
+                                    background='#FFF8DC',
+                                    foreground='#A52A2A')
+        self.task_field.place(x=30,y=80)
+
+        self.add_button=ttk.Button(self.functions_Frame,
+                                    text='Add task',
+                                    width=24,
+                                    command=self.add_task)
+        
+        self.del_button=ttk.Button(self.functions_Frame,
+                                    text='Delete task',
+                                    width=24,
+                                    command=self.delete_task)
+        
+        self.del_all_button=ttk.Button(self.functions_Frame,
+                                    text='Delete all task',
+                                    width=24,
+                                    command=self.delete_all_tasks)
+       
+        self.exit_button=ttk.Button(self.functions_Frame,
+                                    text='Exit task',
+                                    width=24,
+                                    command=self.close)
+        
+        self.add_button.place(x=30,y=120)
+        self.del_button.place(x=30,y=160)
+        self.del_all_button.place(x=30,y=200)
+        self.exit_button.place(x=30,y=240)
+
+        self.task_listbox=tk.Listbox(self.listbox_Frame,
+                                     width=26,
+                                     height=13,
+                                     selectmode='Single',
+                                     background='#FFFFFF',
+                                     foreground='#000000',
+                                     selectbackground='#CD853F',
+                                     selectforeground='#FFFFFF')
+        self.task_listbox.place(x=10,y=20)
+
+    def add_task(self):
+        task_string=self.task_field.get()
+        if not task_string:
+            messagebox.showinfo("Error","Field is empty")
+        else:
+            self.tasks.append(task_string)    
+            self.cursor.execute('insert into tasks values(?)',(task_string,))
+            self.connection.commit()
+            self.list_update()
+            self.task_field.delete(0,'end')
+
+    def list_update(self):
+        self.clear_list()
+        for task in self.tasks:
+            self.task_listbox.insert('end',task)
+
+    def delete_task(self):
+        try:
+            the_value=self.task_listbox.get(self.task_listbox.curselection())
+            if the_value in self.tasks:
+                self.tasks.remove(the_value)
+                self.cursor.execute('Delete from tasks where title=?',(the_value,))
+                self.connection.commit()
+                self.list_update()
+        except:
+            messagebox.showinfo("Error","No Task Selected, Cannot Delete")
+
+    def delete_all_tasks(self):
+        message_box=messagebox.askyesno("Delete All","Are You Sure?")
+        if message_box:
+            while self.tasks:
+                self.tasks.pop()
+            self.cursor.execute('delete from tasks')
+            self.connection.commit()
+            self.list_update()
+
+    def clear_list(self):
+        self.task_listbox.delete(0,'end') 
+
+    def close(self):
+        print(self.tasks) 
+        self.root.destroy()
+
+    def retrive_database(self):
+        self.cursor.execute('select title from tasks')
+        rows=self.cursor.fetchall()
+        for row in rows:
+            self.tasks.append(row[0])
+
+    def __del__(self):
+        self.connection.commit()
+        self.cursor.close() 
+
+if __name__ == "__main__":
+    root=tk.Tk()
+    app=ToDoListApp(root)
+    root.mainloop()
